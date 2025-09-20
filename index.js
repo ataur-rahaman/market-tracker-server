@@ -25,7 +25,13 @@ async function run() {
   try {
     await client.connect();
 
+    const usersCollection = client.db("marketDB").collection("users");
 
+    app.post("/users", async(req,res) => {
+        const newUser = req.body;
+        const result = await usersCollection.insertOne(newUser);
+        res.send(result);
+    })
 
 
     await client.db("admin").command({ ping: 1 });
