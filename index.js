@@ -25,6 +25,67 @@ async function run() {
     await client.connect();
 
     const usersCollection = client.db("marketDB").collection("users");
+    const productsCollection = client.db("marketDB").collection("products");
+
+    app.post("/products", async (req, res) => {
+      try {
+        const product = req.body;
+
+        if (
+          !product.vendor_email ||
+          !product.vendor_name ||
+          !product.market_name ||
+          !product.date ||
+          !product.market_description ||
+          !product.item_name ||
+          !product.image_url ||
+          !product.price_per_unit
+        ) {
+          return res.status(400).send({ message: "All fields are required" });
+        }
+
+        product.prices = [
+          {
+            date: product.date,
+            price: product.price_per_unit,
+          },
+        ];
+
+        product.status = "pending";
+        product.created_at = new Date();
+
+        const result = await productsCollection.insertOne(product);
+
+        res.status(201).send({
+          message: "Product added successfully",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Error adding product:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    app.get("/products/vendor/:email", async (req, res) => {
+  try {
+    const email = req.params.email?.toLowerCase().trim();
+
+    if (!email) {
+      return res.status(400).send({ message: "Vendor email is required" });
+    }
+
+    const products = await productsCollection
+      .find({ vendor_email: email })
+      .sort({ created_at: -1 }) // newest first
+      .toArray();
+
+    res.send(products);
+  } catch (error) {
+    console.error("Error fetching vendor products:", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
+
 
     app.post("/users", async (req, res) => {
       try {
