@@ -206,7 +206,7 @@ async function run() {
       }
     });
 
-    // added api to delete a single advertisement
+    // api to delete a single advertisement
     app.delete("/advertisements/:id", async (req, res) => {
       try {
         const result = await advertisementsCollection.deleteOne({
@@ -215,6 +215,21 @@ async function run() {
         res.send({ success: result.deletedCount > 0 });
       } catch (error) {
         console.error("Error deleting ad:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    // api to update advertisement
+    app.put("/advertisements/:id", async (req, res) => {
+      try {
+        const updatedAd = req.body;
+        const result = await advertisementsCollection.updateOne(
+          { _id: new ObjectId(req.params.id) },
+          { $set: updatedAd }
+        );
+        res.send({ success: result.modifiedCount > 0 });
+      } catch (error) {
+        console.error("Error updating ad:", error);
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
