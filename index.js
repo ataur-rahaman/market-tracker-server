@@ -26,6 +26,7 @@ async function run() {
 
     const usersCollection = client.db("marketDB").collection("users");
     const productsCollection = client.db("marketDB").collection("products");
+    const advertisementsCollection = client.db("marketDB").collection("advertisements");
 
     // api to update product
     app.put("/products/:id", async (req, res) => {
@@ -171,6 +172,21 @@ async function run() {
         });
       } catch (error) {
         console.error("Error adding product:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    // api to add advertisement
+    app.post("/advertisements", async (req, res) => {
+      try {
+        const ad = req.body;
+        ad.status = "pending"; // enforce default
+        ad.created_at = new Date();
+
+        const result = await advertisementsCollection.insertOne(ad);
+        res.send({ insertedId: result.insertedId });
+      } catch (error) {
+        console.error("Error creating advertisement:", error);
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
