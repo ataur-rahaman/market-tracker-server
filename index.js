@@ -8,7 +8,7 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.d4gmgst.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -27,6 +27,51 @@ async function run() {
     const usersCollection = client.db("marketDB").collection("users");
     const productsCollection = client.db("marketDB").collection("products");
 
+// api to update product price
+    app.patch("/products/:id/price", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { price } = req.body;
+
+        if (!price)
+          return res.status(400).send({ message: "Price is required" });
+
+        const today = new Date().toISOString().split("T")[0];
+
+        const product = await productsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        if (!product)
+          return res.status(404).send({ message: "Product not found" });
+
+        const existingIndex = product.prices.findIndex((p) => p.date === today);
+
+        const updateQuery =
+          existingIndex !== -1
+            ? {
+                $set: {
+                  [`prices.${existingIndex}.price`]: price,
+                  price_per_unit: price,
+                },
+              }
+            : {
+                $push: { prices: { date: today, price } },
+                $set: { price_per_unit: price },
+              };
+
+        const result = await productsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          updateQuery
+        );
+
+        res.send({ success: true, message: "Price updated", result });
+      } catch (error) {
+        console.error("Error updating price:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    // api to add products
     app.post("/products", async (req, res) => {
       try {
         const product = req.body;
@@ -66,27 +111,28 @@ async function run() {
       }
     });
 
+    // api to get specific vendor's all products
     app.get("/products/vendor/:email", async (req, res) => {
-  try {
-    const email = req.params.email?.toLowerCase().trim();
+      try {
+        const email = req.params.email?.toLowerCase().trim();
 
-    if (!email) {
-      return res.status(400).send({ message: "Vendor email is required" });
-    }
+        if (!email) {
+          return res.status(400).send({ message: "Vendor email is required" });
+        }
 
-    const products = await productsCollection
-      .find({ vendor_email: email })
-      .sort({ created_at: -1 }) // newest first
-      .toArray();
+        const products = await productsCollection
+          .find({ vendor_email: email })
+          .sort({ created_at: -1 }) // newest first
+          .toArray();
 
-    res.send(products);
-  } catch (error) {
-    console.error("Error fetching vendor products:", error);
-    res.status(500).send({ message: "Internal Server Error" });
-  }
-});
+        res.send(products);
+      } catch (error) {
+        console.error("Error fetching vendor products:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
 
-
+    // api to add new user in db
     app.post("/users", async (req, res) => {
       try {
         const userData = req.body;
@@ -124,6 +170,7 @@ async function run() {
       }
     });
 
+    // api to get current user role
     app.get("/users/role/:email", async (req, res) => {
       try {
         let email = req.params.email;
