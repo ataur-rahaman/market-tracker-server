@@ -27,46 +27,73 @@ async function run() {
     const usersCollection = client.db("marketDB").collection("users");
     const productsCollection = client.db("marketDB").collection("products");
 
-    // api to update product price
-    app.patch("/products/:id/price", async (req, res) => {
+    // api to update product
+    app.put("/products/:id", async (req, res) => {
       try {
         const { id } = req.params;
-        const { price } = req.body;
-
-        if (!price)
-          return res.status(400).send({ message: "Price is required" });
+        const updatedData = req.body;
 
         const today = new Date().toISOString().split("T")[0];
 
+        // Find product first
         const product = await productsCollection.findOne({
           _id: new ObjectId(id),
         });
-        if (!product)
-          return res.status(404).send({ message: "Product not found" });
 
+        if (!product) {
+          return res.status(404).send({ message: "Product not found" });
+        }
+
+        // Check if today's date already exists
         const existingIndex = product.prices.findIndex((p) => p.date === today);
 
-        const updateQuery =
-          existingIndex !== -1
-            ? {
-                $set: {
-                  [`prices.${existingIndex}.price`]: price,
-                  price_per_unit: price,
-                },
-              }
-            : {
-                $push: { prices: { date: today, price } },
-                $set: { price_per_unit: price },
-              };
+        let updateDoc;
+        if (existingIndex !== -1) {
+          // ✅ Update existing record for today
+          updateDoc = {
+            $set: {
+              [`prices.${existingIndex}.price`]: updatedData.price_per_unit,
+              [`prices.${existingIndex}.updated_by`]:
+                updatedData.updated_by || "vendor",
+              price_per_unit: updatedData.price_per_unit,
+              market_name: updatedData.market_name,
+              market_description: updatedData.market_description,
+              item_name: updatedData.item_name,
+              image_url: updatedData.image_url,
+              item_description: updatedData.item_description,
+              last_updated: today,
+            },
+          };
+        } else {
+          // ✅ Push new record
+          updateDoc = {
+            $set: {
+              price_per_unit: updatedData.price_per_unit,
+              market_name: updatedData.market_name,
+              market_description: updatedData.market_description,
+              item_name: updatedData.item_name,
+              image_url: updatedData.image_url,
+              item_description: updatedData.item_description,
+              last_updated: today,
+            },
+            $push: {
+              prices: {
+                date: today,
+                price: updatedData.price_per_unit,
+                updated_by: updatedData.updated_by || "vendor",
+              },
+            },
+          };
+        }
 
         const result = await productsCollection.updateOne(
           { _id: new ObjectId(id) },
-          updateQuery
+          updateDoc
         );
 
-        res.send({ success: true, message: "Price updated", result });
+        res.send({ success: true, message: "Product updated", result });
       } catch (error) {
-        console.error("Error updating price:", error);
+        console.error("Error updating product:", error);
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
@@ -85,6 +112,25 @@ async function run() {
         res.send(product);
       } catch (error) {
         console.error("Error fetching product:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    // api to delete single product
+    app.delete("/products/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const result = await productsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        if (result.deletedCount === 0) {
+          return res.status(404).send({ message: "Product not found" });
+        }
+
+        res.send({ success: true, message: "Product deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting product:", error);
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
