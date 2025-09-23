@@ -26,7 +26,9 @@ async function run() {
 
     const usersCollection = client.db("marketDB").collection("users");
     const productsCollection = client.db("marketDB").collection("products");
-    const advertisementsCollection = client.db("marketDB").collection("advertisements");
+    const advertisementsCollection = client
+      .db("marketDB")
+      .collection("advertisements");
 
     // api to update product
     app.put("/products/:id", async (req, res) => {
@@ -187,6 +189,19 @@ async function run() {
         res.send({ insertedId: result.insertedId });
       } catch (error) {
         console.error("Error creating advertisement:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    // api to get specific vendor's advertisements
+    app.get("/advertisements/vendor/:email", async (req, res) => {
+      try {
+        const ads = await advertisementsCollection
+          .find({ vendor_email: req.params.email })
+          .toArray();
+        res.send(ads);
+      } catch (error) {
+        console.error("Error fetching ads:", error);
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
