@@ -27,7 +27,7 @@ async function run() {
     const usersCollection = client.db("marketDB").collection("users");
     const productsCollection = client.db("marketDB").collection("products");
 
-// api to update product price
+    // api to update product price
     app.patch("/products/:id/price", async (req, res) => {
       try {
         const { id } = req.params;
@@ -67,6 +67,24 @@ async function run() {
         res.send({ success: true, message: "Price updated", result });
       } catch (error) {
         console.error("Error updating price:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    // api to get single product
+    app.get("/products/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const product = await productsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!product)
+          return res.status(404).send({ message: "Product not found" });
+
+        res.send(product);
+      } catch (error) {
+        console.error("Error fetching product:", error);
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
