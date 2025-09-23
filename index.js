@@ -206,6 +206,19 @@ async function run() {
       }
     });
 
+    // added api to delete a single advertisement
+    app.delete("/advertisements/:id", async (req, res) => {
+      try {
+        const result = await advertisementsCollection.deleteOne({
+          _id: new ObjectId(req.params.id),
+        });
+        res.send({ success: result.deletedCount > 0 });
+      } catch (error) {
+        console.error("Error deleting ad:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
     // api to get specific vendor's all products
     app.get("/products/vendor/:email", async (req, res) => {
       try {
