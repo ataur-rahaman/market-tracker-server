@@ -309,6 +309,29 @@ async function run() {
       }
     });
 
+    // GET /users
+    app.get("/users", async (req, res) => {
+      const users = await usersCollection
+        .find({})
+        .sort({ user_email: 1 })
+        .toArray();
+      res.send(users);
+    });
+
+    // PATCH /users/:id/role
+    app.patch("/users/:id/role", async (req, res) => {
+      const { id } = req.params;
+      const { role } = req.body;
+      if (!["user", "vendor", "admin"].includes(role)) {
+        return res.status(400).send({ message: "Invalid role" });
+      }
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { user_role: role } }
+      );
+      res.send({ success: true, result });
+    });
+
     // api to get current user role
     app.get("/users/role/:email", async (req, res) => {
       try {
