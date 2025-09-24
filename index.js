@@ -178,7 +178,6 @@ async function run() {
       }
     });
 
-    // api to add advertisement
     app.post("/advertisements", async (req, res) => {
       try {
         const ad = req.body;
@@ -206,6 +205,38 @@ async function run() {
       }
     });
 
+    // api to update advertisement
+    app.put("/advertisements/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { ad_title, description, image_url, status } = req.body;
+
+        const updateDoc = {
+          $set: {
+            ...(ad_title !== undefined && { ad_title }),
+            ...(description !== undefined && { description }),
+            ...(image_url !== undefined && { image_url }),
+            ...(status !== undefined && { status }),
+            updated_at: new Date(),
+          },
+        };
+
+        const result = await advertisementsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          updateDoc
+        );
+
+        res.send({
+          success: result.matchedCount === 1 && result.modifiedCount >= 0,
+          matchedCount: result.matchedCount,
+          modifiedCount: result.modifiedCount,
+        });
+      } catch (error) {
+        console.error("Error updating ad:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
     // api to delete a single advertisement
     app.delete("/advertisements/:id", async (req, res) => {
       try {
@@ -215,21 +246,6 @@ async function run() {
         res.send({ success: result.deletedCount > 0 });
       } catch (error) {
         console.error("Error deleting ad:", error);
-        res.status(500).send({ message: "Internal Server Error" });
-      }
-    });
-
-    // api to update advertisement
-    app.put("/advertisements/:id", async (req, res) => {
-      try {
-        const updatedAd = req.body;
-        const result = await advertisementsCollection.updateOne(
-          { _id: new ObjectId(req.params.id) },
-          { $set: updatedAd }
-        );
-        res.send({ success: result.modifiedCount > 0 });
-      } catch (error) {
-        console.error("Error updating ad:", error);
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
