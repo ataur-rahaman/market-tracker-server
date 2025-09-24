@@ -227,6 +227,19 @@ async function run() {
       }
     });
 
+    app.get("/advertisements", async (_req, res) => {
+      try {
+        const ads = await advertisementsCollection
+          .find({})
+          .sort({ created_at: -1 })
+          .toArray();
+        res.send(ads);
+      } catch (error) {
+        console.error("Error fetching advertisements:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
     // api to get specific vendor's advertisements
     app.get("/advertisements/vendor/:email", async (req, res) => {
       try {
@@ -268,6 +281,32 @@ async function run() {
         });
       } catch (error) {
         console.error("Error updating ad:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    // update advertisement status (Admin)
+    app.patch("/advertisements/:id/status", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!["pending", "active", "paused", "rejected"].includes(status)) {
+          return res.status(400).send({ message: "Invalid status" });
+        }
+
+        const result = await advertisementsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status, updated_at: new Date() } }
+        );
+
+        res.send({
+          success: result.matchedCount === 1 && result.modifiedCount >= 0,
+          matchedCount: result.matchedCount,
+          modifiedCount: result.modifiedCount,
+        });
+      } catch (error) {
+        console.error("Error updating ad status:", error);
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
