@@ -138,6 +138,41 @@ async function run() {
       }
     });
 
+    // GET /products
+    app.get("/products", async (req, res) => {
+      const items = await productsCollection
+        .find({})
+        .sort({ created_at: -1 })
+        .toArray();
+      res.send(items);
+    });
+
+    // PATCH /products/:id/status  body: { status, reason?, feedback? }
+    const { ObjectId } = require("mongodb");
+    app.patch("/products/:id/status", async (req, res) => {
+      const { id } = req.params;
+      const { status, reason = null, feedback = null } = req.body;
+
+      if (!["pending", "approved", "rejected"].includes(status)) {
+        return res.status(400).send({ message: "Invalid status" });
+      }
+
+      const update = {
+        $set: {
+          status,
+          rejection_reason: status === "rejected" ? reason : null,
+          rejection_feedback: status === "rejected" ? feedback : null,
+          updated_at: new Date(),
+        },
+      };
+
+      const result = await productsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        update
+      );
+      res.send({ success: true, result });
+    });
+
     // api to add products
     app.post("/products", async (req, res) => {
       try {
