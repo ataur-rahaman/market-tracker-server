@@ -105,6 +105,7 @@ async function run() {
     app.get("/products/:id", async (req, res) => {
       try {
         const { id } = req.params;
+        console.log(id);
         const product = await productsCollection.findOne({
           _id: new ObjectId(id),
         });
@@ -138,13 +139,47 @@ async function run() {
       }
     });
 
-    // GET /products
+    //GET / products;
     app.get("/products", async (req, res) => {
       const items = await productsCollection
         .find({})
         .sort({ created_at: -1 })
         .toArray();
       res.send(items);
+    });
+
+    app.get("/approved-limited-products", async (req, res) => {
+      try {
+        const limit = 6; // number of markets you want
+
+        const pipeline = [
+          // 1. only approved
+          { $match: { status: "approved" } },
+
+          // 2. sort by latest updated first
+          { $sort: { updated_at: -1 } },
+
+          // 3. group by market → keep only the first product of each market
+          {
+            $group: {
+              _id: "$market_name",
+              product: { $first: "$$ROOT" },
+            },
+          },
+
+          // 4. replace group result with the product itself
+          { $replaceRoot: { newRoot: "$product" } },
+
+          // 5. limit to 6 products (6 different markets max)
+          { $limit: limit },
+        ];
+
+        const result = await productsCollection.aggregate(pipeline).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching limited approved products:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
     });
 
     // PATCH /products/:id/status  body: { status, reason?, feedback? }
